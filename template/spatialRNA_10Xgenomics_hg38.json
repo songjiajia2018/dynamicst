@@ -1,0 +1,66 @@
+{
+    "spatialRNA_10Xgenomics.Project_Info": {
+        "Project_No": "DYKR-202303-S223",
+        "Project_Name": "上海免疫研究所自研空转测试",
+        "Project_Time": "2023-05-09",
+        "Report_No": "",
+        "Species": "Human"
+    },
+
+    "spatialRNA_10Xgenomics.script": "/disk/pipeline/Visium_10X/",
+    "spatialRNA_10Xgenomics.cwd": "/project/Visium_10X/Rad/KF/20230506",
+    "spatialRNA_10Xgenomics.spaceranger_flag": false,
+    "spatialRNA_10Xgenomics.aggr_flag": false,
+    "spatialRNA_10Xgenomics.loupe_flag": false,
+    "spatialRNA_10Xgenomics.reference_genome": "/home/guoyang/tools/refdata-gex-GRCh38-2020-A",
+    "spatialRNA_10Xgenomics.spaceranger_mem": 128,
+    "spatialRNA_10Xgenomics.spaceranger_cores": 20,
+    "spatialRNA_10Xgenomics.r2_length": 91,
+
+    "spatialRNA_10Xgenomics.Samples": [
+        {
+            "sample_name": "CTL306",
+            "sample_name_suffix": ["test_sample"],
+            "fastq_dir": ["/home/guoyang/try/tiny-bcl_new/outs/fastq_path"],
+            
+            "slide": "",
+            "area": "",
+
+            "image": "",
+
+            "outs_10x": "/project/Visium_10X/Rad/KF/20230506/SpaceRanger/CTL306/outs",
+            "RDS": "",
+
+            "batch": ""
+        }
+    ],
+
+    "spatialRNA_10Xgenomics.compare":[],
+
+    "spatialRNA_10Xgenomics.filter": {
+        "HB_genes": ["HBA1","HBA2","HBB","HBD","HBE1","HBG1","HBG2","HBM","HBQ1","HBZ","Hba-x","Hba-a1","Hba-a2","Hbb-bt","Hbb-bs","Hbb-bh2","Hbb-bh1","Hbb-y"],
+        "cell_cycle": false,
+        "individual_RDS": false,
+        "barcodes": "",
+        "genes": "",
+        "exclude_genes": "",
+        "exclude_barcodes": ""
+    },
+
+    "spatialRNA_10Xgenomics.cluster": {
+        "pc_num": -1,
+        "resolution": 0.6
+    },
+
+    "spatialRNA_10Xgenomics.batch_effect": "orig.ident",
+    "spatialRNA_10Xgenomics.merge": false,
+    "spatialRNA_10Xgenomics.marker_list": [],
+
+    "spatialRNA_10Xgenomics.OrgDb": "org.Hs.eg.db",
+    "spatialRNA_10Xgenomics.organism_kegg": "hsa",
+    "spatialRNA_10Xgenomics.organism_reactome": "human",
+    "spatialRNA_10Xgenomics.cutoff": 0.1,
+
+    "spatialRNA_10Xgenomics.reference_builtin": "HPCA",
+    "spatialRNA_10Xgenomics.labels": "label.main"
+}

@@ -1,0 +1,168 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import re
+import os
+import json
+import logging
+import argparse
+from glob import glob
+from pathlib import Path
+from subprocess import run
+
+parser = argparse.ArgumentParser(prog='PROG')
+subparsers = parser.add_subparsers(help='sub-command help')
+
+parser_a = subparsers.add_parser('count', help='add help')
+parser_a.add_argument('-S','--sample',required=True,help="Sample name of each batch,required")
+parser_a.add_argument('--id',required=True,help="Final sample name,required")
+parser_a.add_argument('-I','--inputdir',required=True,help="raw data path,required")
+parser_a.add_argument('-g','--gtf',default="/disk/reference/WPSRanger_ref/mm10/genes.gtf",help="genome annotation file,default:/disk/reference/WPSRanger_ref/mm10/genes.gtf")
+parser_a.add_argument("--transcriptome",default="/disk/reference/WPSRanger_ref/mm10/star/",help="Path of folder containing transcriptome reference,default:/disk/reference/WPSRanger_ref/mm10/star/")
+parser_a.add_argument('--whitelist',nargs='+',default="/disk/pipeline/DynamicST/db/barcodex.txt /disk/pipeline/DynamicST/db/barcodey.txt",help="Barcode whitelist;default:/disk/pipeline/DynamicST/db/barcodex.txt /disk/pipeline/DynamicST/db/barcodey.txt")
+parser_a.add_argument('--barcode',default="./barcodes.txt",help="spot list file under tissue;default:./barcodes.txt")
+parser_a.add_argument('-o','--outputdir',default="./",help="output file name,default ./")
+parser_a.add_argument('--cores',default=32,help="set max cores the pipeline may request at one time.;default 32")
+#parser_a.add_argument("--expect-cells",default=10000,help="expect-cells,default 10000")
+parser_a.add_argument("--CBposition",nargs='+',default="0_0_0_7 0_38_0_45",help="position of Cell Barcode(s) on the barcode read(0-base).default:0_0_0_7 0_38_0_45")
+parser_a.add_argument("--UMIposition",default="0_46_0_57",help="position of the UMI on the barcode read, same as CBposition(0-base).default:0_46_0_57")
+#parser_a.add_argument("--CBstart",default=1,help="barcode start,default 1")
+#parser_a.add_argument("--CBlen",default=16,help="barcode len,default 16")
+#parser_a.add_argument("--UMIstart",default=17,help="barcode start,default 17")
+#parser_a.add_argument("--UMIlen",default=12,help="umi len,default 12")
+
+#parser_a.add_argument("--cellcalling",default="TopCells",help="EmptyDrops_CR,CellRanger2.2,TopCells,default TopCells")
+
+parser_a.add_argument("-F",'--forceall',action='store_true',help="Force the execution of the selected (or the first) rule and all rules it is dependent on regardless of already created output.")
+parser_a.add_argument('-n','--dryrun',action='store_true',help="Do not execute anything, and display what would be done. If you have a very large workflow, use --dryrun --quiet to just print a summary of the DAG of jobs.")
+
+
+args = parser.parse_args()
+
+info = """
+DynamicEX DynamicEX-1.0.0
+
+USAGE:
+    DynamicEX <SUBCOMMAND>
+
+SUBCOMMANDS:
+    count               Count gene expression (targeted or whole-transcriptome) and/or feature barcode reads from a single sample and GEM well
+"""
+if not args._get_kwargs():
+    print(info)
+    exit()
+logger = logging.getLogger()
+logger.setLevel("INFO")
+samplename = str(args.sample)
+inputdir = args.inputdir
+
+
+R1 = []
+R2 = []
+
+for sample in samplename.split(","):
+    regex = f"{sample}\_S\d+\_L\d+\_R1\_\d+.fastq.gz"
+    for elem in inputdir.split(","):
+        gzfile = Path(elem).glob(f"{sample}*gz")
+        for file in gzfile:
+            if re.match(regex,file.name):
+                R1.append(str(file.absolute()))
+                R2.append(str(file.absolute()).replace("R1_","R2_"))
+            elif re.match(f"{sample}.*?L\d+\_1.fq.gz",file.name):
+                R1.append(str(file.absolute()))
+                R2.append(str(file.absolute()).replace("_1.fq.gz","_2.fq.gz"))
+if not R1:
+    print("Corresponding file not found!")
+    exit()
+    
+home = Path(os.path.abspath(__file__)).parent.parent
+if len(R1) == 1:
+    info = {"R1":f"{R1[0]}","R2":f"{R2[0]}",
+            "sample":args.id,
+            "transcriptome":str(Path(args.transcriptome).absolute()),
+            "cores":args.cores,
+            "gtf":str(Path(args.gtf).absolute()),
+            "CBposition":args.CBposition,
+            "UMIposition":args.UMIposition,
+            "whitelist":args.whitelist,
+            "barcode":args.barcode,
+            "outputdir":str(Path(args.outputdir).absolute()),
+            "softhome":str(home)}
+else:
+    pwd = Path(args.outputdir).absolute()
+    (pwd/'combine_data').mkdir(parents=True, exist_ok=True)
+    
+    logging.info(f"cat {' '.join(R1)} > {pwd/'combine_data'}/{args.id}_S1_L002_R1_001.fastq.gz")
+    os.system(f"cat {' '.join(R1)} > {pwd/'combine_data'}/{args.id}_S1_L002_R1_001.fastq.gz")
+    logging.info(f"cat {' '.join(R2)} > {pwd/'combine_data'}/{args.id}_S1_L002_R2_001.fastq.gz")
+    os.system(f"cat {' '.join(R2)} > {pwd/'combine_data'}/{args.id}_S1_L002_R2_001.fastq.gz")
+    
+    R1 = str(pwd/'combine_data'/f"{args.id}_S1_L002_R1_001.fastq.gz")
+    R2 = str(pwd/'combine_data'/f"{args.id}_S1_L002_R2_001.fastq.gz")
+    info = {"R1":f"{R1}","R2":f"{R2}",
+            "sample":args.id,
+            "transcriptome":str(Path(args.transcriptome).absolute()),
+            "cores":args.cores,
+            "gtf":str(Path(args.gtf).absolute()),
+            "CBposition":args.CBposition,
+            "UMIposition":args.UMIposition,
+            "expect_cells":args.expect_cells,
+            "whitelist":args.whitelist,
+            "barcode":args.barcode,
+            "outputdir":str(Path(args.outputdir).absolute()),
+            "softhome":str(home)}
+
+(Path(args.outputdir)/"logs").mkdir(parents=True, exist_ok=True)
+
+bind = {}
+for key in ['R1','transcriptome','gtf','outputdir']:
+    bind[str(Path(info[key]).parent.absolute())]=1
+
+bind[str(home)]=str(home)
+
+HOME = os.environ.get('HOME',"no-exist")
+if Path(HOME).exists():
+    TMP = Path(HOME)/"tmp"
+    bind[str(HOME)]=str(HOME)
+    os.system(f"mkdir -p -m 1777 {TMP}")
+    os.system(f"export TMPDIR={TMP}")
+else:
+    TMP = info['outputdir']/"tmp"
+    os.system(f"mkdir -p -m 1777 {TMP}")
+    os.system(f"export TMPDIR={TMP}")
+
+config_path = str((Path(args.outputdir)/"config.json").absolute())
+
+info['TMP'] = str(TMP)
+#info['cellcalling'] = args.cellcalling
+
+with open(config_path,"w",encoding="utf-8") as out:
+    json.dump(info,out,ensure_ascii=False,indent = 4)
+
+
+params = ' '.join([f'--bind {key}:{key} ' for key in bind])
+snakemake = "snakemake"
+snakefile = str(home/"bin/DynamicST_pipeline")
+
+
+if args.dryrun:
+    shell= [snakemake, '-s',snakefile, '--configfile',config_path,"--cores",str(info['cores']),'-pnr']
+    print("\nRun command:")
+    logging.info(" ".join(shell))
+    print()
+    os.system(" ".join(shell))
+    exit()
+    
+if args.forceall:
+    shell= [snakemake, '-s',snakefile, '--configfile',config_path,"--cores",str(info['cores']),'-pr','-F']
+else:
+    shell= [snakemake, '-s',snakefile, '--configfile',config_path,"--cores",str(info['cores']),'-pr']
+
+if not Path(str(args.barcode)).exists():
+    shell= [snakemake, '-s',snakefile, '--configfile',config_path,"--cores",str(info['cores']),'-pr',"-f RunSTARsolo"]
+    
+print("\nRun command:")
+logging.info(" ".join(shell))
+print()
+
+os.system(" ".join(shell))
